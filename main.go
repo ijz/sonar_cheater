@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sonar_cheater/gameplay"
 	"sonar_cheater/terrains"
 )
 
@@ -10,15 +11,22 @@ func main() {
 	archipelago := terrains.MakeArchipelago()
 	terrains.PrintTerrain(archipelago)
 
-	fmt.Println("VOLCANO")
-	volcano := terrains.MakeVolcano()
-	terrains.PrintTerrain(volcano)
+	gb := gameplay.NewGameBoard(archipelago)
+	var action gameplay.Action = &gameplay.MoveAction{Direction:gameplay.MoveDirectionRight}
+	if err := gb.AcceptAction(&action); nil != err {
+		fmt.Println(err)
+	}
 
-	fmt.Println("NORTH POLE")
-	northPole := terrains.MakeNorthPole()
-	terrains.PrintTerrain(northPole)
+	action = &gameplay.MoveAction{Direction:gameplay.MoveDirectionDown}
+	if err := gb.AcceptAction(&action); nil != err {
+		fmt.Println(err)
+	}
 
-	fmt.Println("OPEN WATERS")
-	openWaters := terrains.MakeOpenWaters()
-	terrains.PrintTerrain(openWaters)
+	action = &gameplay.MoveAction{Direction:gameplay.MoveDirectionLeft}
+	if err := gb.AcceptAction(&action); nil != err {
+		fmt.Println(err)
+	}
+
+	gb.PrintPath()
+
 }
