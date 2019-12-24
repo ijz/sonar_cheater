@@ -17,6 +17,11 @@ func main() {
 		fmt.Println(err)
 	}
 
+	action = &gameplay.MoveAction{Direction:gameplay.MoveDirectionRight}
+	if err := gb.AcceptAction(&action); nil != err {
+		fmt.Println(err)
+	}
+
 	action = &gameplay.MoveAction{Direction:gameplay.MoveDirectionDown}
 	if err := gb.AcceptAction(&action); nil != err {
 		fmt.Println(err)
@@ -28,5 +33,14 @@ func main() {
 	}
 
 	gb.PrintPath()
+
+	locations, err := gb.FindPossibleLocations(terrains.CombineUint8(0, 1))
+	fmt.Println("valid positions:")
+	for _, l := range locations {
+		fmt.Println(terrains.SplitUint16(l))
+	}
+	fmt.Println(err)
+
+	gb.RecalculateStartPoints(-1, -1)
 
 }
