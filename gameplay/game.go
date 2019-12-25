@@ -3,6 +3,7 @@ package gameplay
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sonar_cheater/terrains"
 )
 
@@ -22,20 +23,21 @@ type GameBoard struct {
 	path *Node
 	energy int8
 	currentLeaves []*Node
-	life uint8
+	torpedoHits []uint16
 }
 
 func NewGameBoard(terrain []uint8) *GameBoard {
 	var gb GameBoard
 	gb.terrain = terrain
-	gb.life = 2
 	gb.possibleStartingPoints = make(map[uint16]bool)
 
 	// all points are possible start points without moves
 	for i := 0; i < 10; i++ {
 		for j := 0; j < 10; j++ {
 			startPoint := terrains.CombineUint8(uint8(i), uint8(j))
-			gb.possibleStartingPoints[startPoint] = true
+			if !terrains.IsIsland(gb.terrain, uint8(i), uint8(j)) {
+				gb.possibleStartingPoints[startPoint] = true
+			}
 		}
 	}
 
@@ -92,7 +94,7 @@ func (gb *GameBoard) move(r uint8, c uint8, node *Node) (uint8, uint8, error) {
 		return 0, 0, errors.New("bad_direction")
 	}
 	if terrains.IsIsland(gb.terrain, newr, newc) {
-		return 0, 0, errors.New("failed_move")
+		return 0, 0, errors.New("hit_island")
 	}
 	return newr, newc, nil
 }
@@ -127,16 +129,23 @@ func (gb *GameBoard) FindPossibleLocations(startPoint uint16) ([]uint16, error) 
 		return nil, errors.New("no_path")
 	}
 	var validPositions []uint16
-	err := gb.findPossibleLocationsHelper(startPoint, gb.path, &validPositions)
+	seenNodes := make(map[uint16]bool)
+	err := gb.findPossibleLocationsHelper(startPoint, gb.path, &validPositions, seenNodes)
 	return validPositions, err
 }
 
 func (gb *GameBoard) findPossibleLocationsHelper(
-	startPoint uint16, node *Node, validPositions *[]uint16) error {
+	startPoint uint16, node *Node, validPositions *[]uint16, seenNodes map[uint16]bool) error {
+
+	if seenNodes[startPoint] {
+		log.Printf("seen %s\n", terrains.StringUint16(startPoint))
+	}
+	seenNodes[startPoint] = true
 	if nil == node {
 		*validPositions = append(*validPositions, startPoint)
 		return nil
 	}
+
 	r, c := terrains.SplitUint16(startPoint)
 	newr, newc, err := gb.move(r, c, node)
 	if nil != err {
@@ -147,31 +156,70 @@ func (gb *GameBoard) findPossibleLocationsHelper(
 		return nil
 	}
 
-	for _, c := range node.Children {
+	allChildrenErr := true
+	for _, child := range node.Children {
 		// TODO: prune tree base off of err
-		if err = gb.findPossibleLocationsHelper(terrains.CombineUint8(newr, newc), c, validPositions); nil != err {
-			return err
+		newStart := terrains.CombineUint8(newr, newc)
+		newStartString := terrains.StringUint16(newStart)
+		err = gb.findPossibleLocationsHelper(terrains.CombineUint8(newr, newc), child, validPositions, seenNodes)
+		if nil != err {
+			log.Printf("error while locating. start: %s, move: %s, err: %s", newStartString, DirectionDict[child.Action], err)
+		} else {
+			allChildrenErr = false
 		}
+	}
+	if allChildrenErr {
+		return errors.New("all_subsequent_moves_failed")
 	}
 	return nil
 }
 
 func (gb *GameBoard) RecalculateStartPoints(row int8, col int8) {
-	// TODO debug
+	// if we know the start point for sure, no need to do anything
+	if 1 == len(gb.possibleStartingPoints) {
+		return
+	}
 	for start, _ := range gb.possibleStartingPoints {
-		locations, err := gb.FindPossibleLocations(start)
+		startr, startc := terrains.SplitUint16(start)
 		startString := terrains.StringUint16(start)
+		sonarString := terrains.StringUint16(terrains.CombineUint8(uint8(row), uint8(col)))
+		if (0 <= row && startr != uint8(row)) || (0 <= col && startc != uint8(col)) {
+			log.Printf("removing %s due to sonar %s\n", startString, sonarString)
+			delete(gb.possibleStartingPoints, start)
+			continue
+		}
+		if 0 <= col && startc != uint8(col) {
+			log.Printf("removing %s due to sonar row %d\n", startString, row)
+			delete(gb.possibleStartingPoints, start)
+			continue
+		}
+		locations, err := gb.FindPossibleLocations(start)
 		if nil != err {
-			fmt.Printf("removing %s\n", startString)
+			log.Printf("removing %s\n", startString)
 			delete(gb.possibleStartingPoints, start)
 		} else {
-			fmt.Printf("possible start point %s\n", startString)
-			for l := range locations {
-				fmt.Printf("\tpossible current position %s\n", terrains.StringUint16(uint16(l)))
+			log.Printf("possible start point %s\n", startString)
+			for _, l := range locations {
+				log.Printf("\tpossible current position %s\n", terrains.StringUint16(l))
 			}
 		}
 
 	}
+	log.Printf("All possible start points(%d):\n", len(gb.possibleStartingPoints))
+	for start, _ := range gb.possibleStartingPoints {
+		log.Println(terrains.StringUint16(start))
+	}
+	fmt.Println("-------------")
+}
+
+func (gb *GameBoard) GetStartPoint() (uint16, error) {
+	if 1 != len(gb.possibleStartingPoints) {
+		return 0, errors.New("uncertain")
+	}
+	for l, _ := range gb.possibleStartingPoints {
+		return l, nil
+	}
+	return 0, errors.New("impossible")
 }
 
 func (gb *GameBoard) PrintPath() {
@@ -181,7 +229,7 @@ func (gb *GameBoard) PrintPath() {
 	for nil != stack && 0 != len(stack) {
 		var row []*Node
 		for _, node := range stack {
-			fmt.Printf("%s ", DirectionDict[node.Action])
+			fmt.Printf("%s | ", DirectionDict[node.Action])
 			if nil == node.Children {
 				continue
 			}
@@ -194,18 +242,25 @@ func (gb *GameBoard) PrintPath() {
 	}
 }
 
-func (gb *GameBoard) ListPossibleLocations() []uint16 {
+func (gb *GameBoard) TorpedoHit(location uint16, didHit bool) error {
+	if didHit {
+		gb.possibleStartingPoints = make(map[uint16]bool)
+		gb.possibleStartingPoints[location] = true
+		gb.torpedoHits = append(gb.torpedoHits, location)
+	} else {
+		gb.PruneTreeTorpedo(location)
+	}
+	if 2 == len(gb.torpedoHits) {
+		fmt.Println("We are victorious!")
+		// TODO print full path and hit
+	}
 	return nil
 }
 
-func (gb *GameBoard) TorpedoHit(location uint16, didHit bool) (bool, error) {
-	if didHit {
-		// TODO how do we indicate on path
-		gb.possibleStartingPoints = make(map[uint16]bool)
-		gb.possibleStartingPoints[location] = true
-		gb.life -= 1
-	} else {
-		// TODO prune tree
-	}
-	return 0 == gb.life, nil
+func (gb *GameBoard) PruneTreeSonar(row int8, col int8) {
+
+}
+
+func (gb *GameBoard) PruneTreeTorpedo(notHere uint16) {
+
 }

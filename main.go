@@ -6,41 +6,56 @@ import (
 	"sonar_cheater/terrains"
 )
 
+func makeMove(gb *gameplay.GameBoard, direction gameplay.MoveDirection) {
+	var action gameplay.Action = &gameplay.MoveAction{Direction:direction}
+	if err := gb.AcceptAction(&action); nil != err {
+		fmt.Println(err)
+	}
+}
+
 func main() {
 	fmt.Println("ARCHIPELAGO")
 	archipelago := terrains.MakeArchipelago()
 	terrains.PrintTerrain(archipelago)
 
 	gb := gameplay.NewGameBoard(archipelago)
-	var action gameplay.Action = &gameplay.MoveAction{Direction:gameplay.MoveDirectionRight}
-	if err := gb.AcceptAction(&action); nil != err {
-		fmt.Println(err)
-	}
 
-	action = &gameplay.MoveAction{Direction:gameplay.MoveDirectionRight}
-	if err := gb.AcceptAction(&action); nil != err {
-		fmt.Println(err)
-	}
-
-	action = &gameplay.MoveAction{Direction:gameplay.MoveDirectionDown}
-	if err := gb.AcceptAction(&action); nil != err {
-		fmt.Println(err)
-	}
-
-	action = &gameplay.MoveAction{Direction:gameplay.MoveDirectionLeft}
-	if err := gb.AcceptAction(&action); nil != err {
-		fmt.Println(err)
-	}
+	makeMove(gb, gameplay.MoveDirectionRight)
+	//makeMove(gb, gameplay.MoveDirectionRight)
+	makeMove(gb, gameplay.MoveDirectionDown)
+	//makeMove(gb, gameplay.MoveDirectionLeft)
+	//
+	//makeMove(gb, gameplay.MoveDirectionDown)
+	//makeMove(gb, gameplay.MoveDirectionDown)
+	makeMove(gb, gameplay.MoveDirectionRight)
+	//makeMove(gb, gameplay.MoveDirectionRight)
+	//
+	//makeMove(gb, gameplay.MoveDirectionRight)
+	//makeMove(gb, gameplay.MoveDirectionRight)
 
 	gb.PrintPath()
 
-	locations, err := gb.FindPossibleLocations(terrains.CombineUint8(0, 1))
-	fmt.Println("valid positions:")
-	for _, l := range locations {
-		fmt.Println(terrains.SplitUint16(l))
+	//gb.RecalculateStartPoints(-1, -1)
+
+	//var sonarAction gameplay.Action = &gameplay.SonarAction{Row:1}
+	//gb.AcceptAction(&sonarAction)
+
+	var silenceAction gameplay.Action = &gameplay.SilenceAction{}
+	gb.AcceptAction(&silenceAction)
+
+	makeMove(gb, gameplay.MoveDirectionRight)
+
+	gb.PrintPath()
+
+	//startPoint, err := gb.GetStartPoint()
+	//if nil != err {
+	//	fmt.Printf("Cannot get start point: %s", err)
+	//	return
+	//}
+	startPoint := terrains.CombineUint8(0, 2)
+	possibleLocations, err := gb.FindPossibleLocations(startPoint)
+	for _, i := range possibleLocations {
+		fmt.Printf("Possible location: %s\n", terrains.StringUint16(i))
 	}
 	fmt.Println(err)
-
-	gb.RecalculateStartPoints(-1, -1)
-
 }

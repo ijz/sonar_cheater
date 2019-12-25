@@ -6,7 +6,6 @@ const (
 	MoveDirectionDown MoveDirection = 1
 	MoveDirectionLeft MoveDirection = 2
 	MoveDirectionRight MoveDirection = 3
-	MoveDirectionSilent MoveDirection = 4
 )
 
 var DirectionDict = map[MoveDirection]string {
@@ -15,7 +14,6 @@ var DirectionDict = map[MoveDirection]string {
 	MoveDirectionLeft: "Left",
 	MoveDirectionRight: "Right",
 }
-
 
 type Action interface {
 	EnergyCost() int8
@@ -34,12 +32,13 @@ func (m *MoveAction) Perform(gb *GameBoard) error {
 	if err := gb.AddNodes(m.Direction); nil != err {
 		return err
 	}
+	gb.RecalculateStartPoints(-1, -1)
 	return nil
 }
 
 type SonarAction struct {
-	isRow bool
-	location uint8
+	Row int8
+	Col byte
 }
 
 func (s *SonarAction) EnergyCost() int8 {
@@ -47,14 +46,15 @@ func (s *SonarAction) EnergyCost() int8 {
 }
 
 func (s *SonarAction) Perform(gb *GameBoard) error {
-	var row int8 = -1
-	var col int8 = -1
-	if s.isRow {
-		row = int8(s.location)
-	} else {
-		col = int8(s.location)
+	var row, col int8 = -1, -1
+	if 0 < s.Row {
+		row = s.Row - 1
+	}
+	if 0 < s.Col {
+		col = int8(s.Col - 'A')
 	}
 	gb.RecalculateStartPoints(row, col)
+	// TODO prune tree
 	return nil
 }
 
@@ -82,7 +82,7 @@ func (t *TorpedoAction) EnergyCost() int8 {
 }
 
 func (t *TorpedoAction) Perform(gb *GameBoard) error {
-	return nil
+	return gb.TorpedoHit(t.location, t.didHit)
 }
 
 type SurfaceAction struct {
