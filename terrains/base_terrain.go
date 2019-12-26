@@ -32,6 +32,15 @@ func CombineUint8(r uint8, c uint8) uint16 {
 	return i
 }
 
+func Uint16FromString(s string) uint16 {
+	colS := s[0]
+	rowS := s[1]
+	col := colS - 'A'
+	row := rowS - '1'
+	fmt.Printf("%s = [r%d, c%d]\n", s, row, col)
+	return CombineUint8(row, col)
+}
+
 func StringUint16(i uint16) string {
 	r, c := SplitUint16(i)
 	return fmt.Sprintf("%c%d",c + 'A', r + 1)

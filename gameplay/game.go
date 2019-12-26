@@ -7,13 +7,18 @@ import (
 	"sonar_cheater/terrains"
 )
 
+func findInSlice(needle uint16, haystack []uint16) (int, bool) {
+	for i, item := range haystack {
+		if needle == item {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
 type Node struct {
 	Action MoveDirection
 	Children []*Node
-}
-
-func (n *Node) isCertain() bool {
-	return 1 == len(n.Children)
 }
 
 type GameBoard struct {
@@ -129,46 +134,53 @@ func (gb *GameBoard) FindPossibleLocations(startPoint uint16) ([]uint16, error) 
 		return nil, errors.New("no_path")
 	}
 	var validPositions []uint16
-	seenNodes := make(map[uint16]bool)
-	err := gb.findPossibleLocationsHelper(startPoint, gb.path, &validPositions, seenNodes)
+	var seenLocs []uint16
+	err := gb.findPossibleLocationsHelper(startPoint, gb.path, &validPositions, &seenLocs, 0)
 	return validPositions, err
 }
 
 func (gb *GameBoard) findPossibleLocationsHelper(
-	startPoint uint16, node *Node, validPositions *[]uint16, seenNodes map[uint16]bool) error {
-
-	if seenNodes[startPoint] {
-		log.Printf("seen %s\n", terrains.StringUint16(startPoint))
+	startPoint uint16, node *Node, validPositions *[]uint16, seenLocs *[]uint16, step int) error {
+	*seenLocs = (*seenLocs)[0:step]
+	if _, found := findInSlice(startPoint, *seenLocs); found {
+		return errors.New("own_path")
 	}
-	seenNodes[startPoint] = true
+	*seenLocs = append(*seenLocs, startPoint)
+	step++
+
 	if nil == node {
 		*validPositions = append(*validPositions, startPoint)
 		return nil
 	}
-
 	r, c := terrains.SplitUint16(startPoint)
+	startString := terrains.StringUint16(startPoint)
 	newr, newc, err := gb.move(r, c, node)
+	newStart := terrains.CombineUint8(newr, newc)
+	newStartString := terrains.StringUint16(newStart)
+
 	if nil != err {
 		return err
 	}
-	if nil == node.Children || 0 == len(node.Children) {
-		*validPositions = append(*validPositions, terrains.CombineUint8(newr, newc))
-		return nil
-	}
 
-	allChildrenErr := true
+	if nil == node.Children || 0 == len(node.Children) {
+		return gb.findPossibleLocationsHelper(newStart, nil, validPositions, seenLocs, step)
+	}
+	newChildren := make([]*Node, 0)
 	for _, child := range node.Children {
 		// TODO: prune tree base off of err
-		newStart := terrains.CombineUint8(newr, newc)
-		newStartString := terrains.StringUint16(newStart)
-		err = gb.findPossibleLocationsHelper(terrains.CombineUint8(newr, newc), child, validPositions, seenNodes)
+
+		err = gb.findPossibleLocationsHelper(newStart, child, validPositions, seenLocs, step)
 		if nil != err {
-			log.Printf("error while locating. start: %s, move: %s, err: %s", newStartString, DirectionDict[child.Action], err)
+			log.Printf(
+				"error while locating. start: %s, move: %s, newStart: %s, newMove: %s, err: %s",
+				startString, DirectionDict[node.Action], newStartString, DirectionDict[child.Action], err)
 		} else {
-			allChildrenErr = false
+			newChildren = append(newChildren, child)
 		}
 	}
-	if allChildrenErr {
+
+	// node.Children = newChildren
+	if 0 == len(newChildren) {
 		return errors.New("all_subsequent_moves_failed")
 	}
 	return nil

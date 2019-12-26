@@ -52,7 +52,7 @@ func main() {
 	//	fmt.Printf("Cannot get start point: %s", err)
 	//	return
 	//}
-	startPoint := terrains.CombineUint8(0, 2)
+	startPoint := terrains.Uint16FromString("C4")
 	possibleLocations, err := gb.FindPossibleLocations(startPoint)
 	for _, i := range possibleLocations {
 		fmt.Printf("Possible location: %s\n", terrains.StringUint16(i))
