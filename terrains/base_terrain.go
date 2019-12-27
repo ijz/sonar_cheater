@@ -2,6 +2,28 @@ package terrains
 
 import "fmt"
 
+type Terrain uint8
+const (
+	ArchipelagoTerrain Terrain = 0
+	VolcanoTerrain Terrain = 1
+	NorthPoleTerrain Terrain = 2
+	OpenWatersTerrain Terrain = 3
+)
+
+var TerrainDict = map[Terrain]func() []uint8 {
+	ArchipelagoTerrain: MakeArchipelago,
+	VolcanoTerrain: MakeVolcano,
+	NorthPoleTerrain: MakeNorthPole,
+	OpenWatersTerrain: MakeOpenWaters,
+}
+
+var TerrainNameDict = map[Terrain]string {
+	ArchipelagoTerrain: "Archipelago",
+	VolcanoTerrain: "Volcano",
+	NorthPoleTerrain: "North Pole",
+	OpenWatersTerrain: "Open Waters",
+}
+
 func InitializeEmptyTerrain() []uint8 {
 	terrain := make([]uint8, 100, 100)
 	return terrain
@@ -32,13 +54,21 @@ func CombineUint8(r uint8, c uint8) uint16 {
 	return i
 }
 
-func Uint16FromString(s string) uint16 {
+func Int8sFromString(s string) (int8, int8) {
 	colS := s[0]
 	rowS := s[1]
-	col := colS - 'A'
-	row := rowS - '1'
-	fmt.Printf("%s = [r%d, c%d]\n", s, row, col)
-	return CombineUint8(row, col)
+	var row, col int8
+	if '-' == colS {
+		col = -1
+	} else {
+		col = int8(colS - 'A')
+	}
+	if '-' == rowS {
+		row = -1
+	} else {
+		row = int8(rowS - '1')
+	}
+	return row, col
 }
 
 func StringUint16(i uint16) string {

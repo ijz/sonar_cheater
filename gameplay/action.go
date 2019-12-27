@@ -1,5 +1,10 @@
 package gameplay
 
+import (
+	"log"
+	"sonar_cheater/terrains"
+)
+
 type MoveDirection uint8
 const (
 	MoveDirectionUp MoveDirection = 0
@@ -13,6 +18,36 @@ var DirectionDict = map[MoveDirection]string {
 	MoveDirectionDown: "Down",
 	MoveDirectionLeft: "Left",
 	MoveDirectionRight: "Right",
+}
+
+func cleanBoard(gb *GameBoard, sonarRow int8, sonarCol int8, notHere int16) {
+	gb.RecalculateStartPoints(sonarRow, sonarCol, notHere)
+	if startPoint, err1 := gb.GetStartPoint(); nil == err1 {
+		validPos, err2 := gb.FindPossibleLocations(startPoint, true, sonarRow, sonarCol, notHere)
+		if nil != err2 {
+			log.Printf("failed to prune path: %s", err2)
+			return
+		}
+		var validPosString []string
+		for _, vp := range validPos {
+			validPosString = append(validPosString, terrains.StringUint16(vp))
+		}
+		log.Printf("start point: %s -> %v", terrains.StringUint16(startPoint), validPosString)
+	} else {
+		// more than one possible start points
+		for sp, _ := range gb.GetPossibleStartPoints() {
+			validPos, err := gb.FindPossibleLocations(sp, false, sonarRow, sonarCol, notHere)
+			if nil != err {
+				log.Printf("failed to follow path: %s", err)
+				continue
+			}
+			var validPosString []string
+			for _, vp := range validPos {
+				validPosString = append(validPosString, terrains.StringUint16(vp))
+			}
+			log.Printf("? start point: %s -> %v", terrains.StringUint16(sp), validPosString)
+		}
+	}
 }
 
 type Action interface {
@@ -32,13 +67,13 @@ func (m *MoveAction) Perform(gb *GameBoard) error {
 	if err := gb.AddNodes(m.Direction); nil != err {
 		return err
 	}
-	gb.RecalculateStartPoints(-1, -1)
+	cleanBoard(gb, -1, -1, -1)
 	return nil
 }
 
 type SonarAction struct {
 	Row int8
-	Col byte
+	Col int8
 }
 
 func (s *SonarAction) EnergyCost() int8 {
@@ -46,15 +81,7 @@ func (s *SonarAction) EnergyCost() int8 {
 }
 
 func (s *SonarAction) Perform(gb *GameBoard) error {
-	var row, col int8 = -1, -1
-	if 0 < s.Row {
-		row = s.Row - 1
-	}
-	if 0 < s.Col {
-		col = int8(s.Col - 'A')
-	}
-	gb.RecalculateStartPoints(row, col)
-	// TODO prune tree
+	cleanBoard(gb, s.Row, s.Col, -1)
 	return nil
 }
 
