@@ -36,12 +36,13 @@ func main() {
 	gb.PrintPath()
 
 	//gb.RecalculateStartPoints(-1, -1)
-
+	//
 	//var sonarAction gameplay.Action = &gameplay.SonarAction{Row:1}
-	//gb.AcceptAction(&sonarAction)
+	//fmt.Println(gb.AcceptAction(&sonarAction))
+
 
 	var silenceAction gameplay.Action = &gameplay.SilenceAction{}
-	gb.AcceptAction(&silenceAction)
+	fmt.Println(gb.AcceptAction(&silenceAction))
 
 	makeMove(gb, gameplay.MoveDirectionRight)
 
@@ -52,10 +53,12 @@ func main() {
 	//	fmt.Printf("Cannot get start point: %s", err)
 	//	return
 	//}
-	startPoint := terrains.Uint16FromString("C4")
-	possibleLocations, err := gb.FindPossibleLocations(startPoint)
+	startPoint := terrains.Uint16FromString("B3")
+	possibleLocations, err := gb.FindPossibleLocations(startPoint, true, 3, -1, -1)
 	for _, i := range possibleLocations {
 		fmt.Printf("Possible location: %s\n", terrains.StringUint16(i))
 	}
 	fmt.Println(err)
+	gb.PrintPath()
+	//gb.RecalculateStartPoints(-1, -1)
 }
