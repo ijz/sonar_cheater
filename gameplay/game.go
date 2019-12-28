@@ -226,17 +226,8 @@ func (gb *GameBoard) GetPossibleStartPoints() map[uint16]bool {
 	return gb.possibleStartingPoints
 }
 
-func (gb *GameBoard) TorpedoHit(location uint16, didHit bool) error {
-	if didHit {
-		gb.possibleStartingPoints = make(map[uint16]bool)
-		gb.possibleStartingPoints[location] = true
-		gb.torpedoHits = append(gb.torpedoHits, location)
-	} else {
-		gb.RecalculateStartPoints(-1, -1, int16(location))
-		if startPoint, err := gb.GetStartPoint(); nil == err {
-			gb.FindPossibleLocations(startPoint, true, -1, -1, int16(location))
-		}
-	}
+func (gb *GameBoard) TorpedoHit(location uint16) error {
+	// This function is called when we torpedo hit the enemy
 	if 2 == len(gb.torpedoHits) {
 		fmt.Println("We are victorious!")
 		if startPoint, err := gb.GetStartPoint(); nil != err {
@@ -245,7 +236,30 @@ func (gb *GameBoard) TorpedoHit(location uint16, didHit bool) error {
 			log.Printf("start point : %s", terrains.StringUint16(startPoint))
 		}
 		gb.PrintPath()
+	} else {
+		gb.torpedoHits = append(gb.torpedoHits, location)
+		row, col := terrains.SplitUint16(location)
+		gb.RecalculateStartPoints(int8(row), int8(col), -1)
+		if startPoint, err := gb.GetStartPoint(); nil == err {
+			_, _ = gb.FindPossibleLocations(startPoint, true, int8(row), int8(col), -1)
+		}
 	}
+	return nil
+}
+
+func (gb *GameBoard) TorpedoMiss(location uint16) {
+	// This function is called when we torpedo miss the enemy
+	gb.RecalculateStartPoints(-1, -1, int16(location))
+	if startPoint, err := gb.GetStartPoint(); nil == err {
+		_, _ = gb.FindPossibleLocations(startPoint, true, -1, -1, int16(location))
+	}
+}
+
+func (gb *GameBoard) TakeTorpedoHit(location uint16) error {
+	/* This function is called when we take a hit from the enemy. This is important because we can narrow down
+	 * which quadrant they are in.
+	 * location is where our enemy torpedoed.
+	 */
 	return nil
 }
 
@@ -267,5 +281,34 @@ func (gb *GameBoard) PrintPath() {
 		}
 		log.Printf("%v", actions)
 		stack = row
+	}
+}
+
+func (gb *GameBoard) PrintState() {
+	if startPoint, err1 := gb.GetStartPoint(); nil == err1 {
+		validPos, err2 := gb.FindPossibleLocations(startPoint, false, -1, -1, -1)
+		if nil != err2 {
+			log.Printf("failed to prune path: %s", err2)
+			return
+		}
+		var validPosString []string
+		for _, vp := range validPos {
+			validPosString = append(validPosString, terrains.StringUint16(vp))
+		}
+		log.Printf("start point: %s -> %v", terrains.StringUint16(startPoint), validPosString)
+	} else {
+		// more than one possible start points
+		for sp, _ := range gb.GetPossibleStartPoints() {
+			validPos, err := gb.FindPossibleLocations(sp, false, -1, -1, -1)
+			if nil != err {
+				log.Printf("failed to follow path: %s", err)
+				continue
+			}
+			var validPosString []string
+			for _, vp := range validPos {
+				validPosString = append(validPosString, terrains.StringUint16(vp))
+			}
+			log.Printf("? start point: %s -> %v", terrains.StringUint16(sp), validPosString)
+		}
 	}
 }

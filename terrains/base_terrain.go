@@ -67,6 +67,9 @@ func Int8sFromString(s string) (int8, int8) {
 		row = -1
 	} else {
 		row = int8(rowS - '1')
+		if '1' == rowS && 3 == len(s) && '0' == s[2] {
+			row = 9
+		}
 	}
 	return row, col
 }

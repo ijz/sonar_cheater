@@ -56,19 +56,37 @@ func silence(ki *KeyboardInput, _ string) {
 }
 
 func surface(ki *KeyboardInput, location string) {
-
+	row, col := terrains.Int8sFromString(location)
+	l := terrains.CombineUint8(uint8(row), uint8(col))
+	var surfaceAction Action = &SurfaceAction{location:l}
+	if err := ki.gb.AcceptAction(&surfaceAction); nil != err {
+		log.Printf("error while surfacing: %s", err)
+	}
 }
 
-func takeHit(ki *KeyboardInput, quadrant string) {
-
+func takeHit(ki *KeyboardInput, location string) {
+	row, col := terrains.Int8sFromString(location)
+	l := terrains.CombineUint8(uint8(row), uint8(col))
+	if err := ki.gb.TakeTorpedoHit(l); nil != err {
+		log.Printf("error while hitting: %s", err)
+	}
+	ki.gb.PrintState()
 }
 
 func hit(ki *KeyboardInput, location string) {
-
+	row, col := terrains.Int8sFromString(location)
+	l := terrains.CombineUint8(uint8(row), uint8(col))
+	if err := ki.gb.TorpedoHit(l); nil != err {
+		log.Printf("error while hitting: %s", err)
+	}
+	ki.gb.PrintState()
 }
 
 func miss(ki *KeyboardInput, location string) {
-
+	row, col := terrains.Int8sFromString(location)
+	l := terrains.CombineUint8(uint8(row), uint8(col))
+	ki.gb.TorpedoMiss(l)
+	ki.gb.PrintState()
 }
 
 func quit(ki *KeyboardInput, _ string) {

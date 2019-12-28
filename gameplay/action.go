@@ -77,11 +77,12 @@ type SonarAction struct {
 }
 
 func (s *SonarAction) EnergyCost() int8 {
-	return 2
+	return 0  // we sonared our enemies, don't cost them anything
 }
 
 func (s *SonarAction) Perform(gb *GameBoard) error {
 	cleanBoard(gb, s.Row, s.Col, -1)
+	gb.PrintState()
 	return nil
 }
 
@@ -96,20 +97,8 @@ func (s *SilenceAction) Perform(gb *GameBoard) error {
 	if nil != err {
 		return err
 	}
+	gb.PrintState()
 	return nil
-}
-
-type TorpedoAction struct {
-	location uint16
-	didHit bool
-}
-
-func (t *TorpedoAction) EnergyCost() int8 {
-	return 4
-}
-
-func (t *TorpedoAction) Perform(gb *GameBoard) error {
-	return gb.TorpedoHit(t.location, t.didHit)
 }
 
 type SurfaceAction struct {
@@ -124,5 +113,6 @@ func (s *SurfaceAction) Perform(gb *GameBoard) error {
 	gb.possibleStartingPoints = make(map[uint16]bool)
 	gb.possibleStartingPoints[s.location] = true
 	gb.path = nil
+	gb.PrintState()
 	return nil
 }
